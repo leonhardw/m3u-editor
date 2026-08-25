@@ -33,7 +33,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle('Playlist Editor')
         
-        self.icon_size = 32
+        self.icon_size = 32  # this changes the cover image size
         
         self.playlist_opened = False
         self.current_folderlist = None
