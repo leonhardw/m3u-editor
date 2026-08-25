@@ -334,6 +334,18 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         
         else:
             super().keyPressEvent(event)
+    
+    def closeEvent(self, event):
+        if self.playlist_opened:
+            reply = QMessageBox.question(self, 'Unsaved changes', 'Close without saving?',
+                                         QMessageBox.StandardButton.Yes |
+                                         QMessageBox.StandardButton.No,
+                                         QMessageBox.StandardButton.No)
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                event.accept()
+            elif reply == QMessageBox.StandardButton.No:
+                event.ignore()
 
 
 class RenameDialog(QDialog):
