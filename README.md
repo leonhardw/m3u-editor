@@ -4,6 +4,13 @@
 
 A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` playlists.
 
+- [Features](#features)
+- [Limitations](#limitations)
+- [Quick Start](#quick-start)  
+- [Batch Renaming](#batch-renaming)
+- [Absolute and Relative Paths](#absolute-and-relative-paths)
+- [Run from source](#run-from-source)
+
 | Main Editor View | Batch Rename Dialog |
 | :---: | :---: |
 | <img src="images/editor1.png" width="100%" alt="Main Editor View"> | <img src="images/rename.png" width="100%" alt="Rename Dialog"> |
