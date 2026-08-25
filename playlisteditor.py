@@ -141,6 +141,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         playlist_metadata = get_song_metadata(songs, os.path.dirname(path), cover_as_bytes=True)
         self.display_songs(playlist_metadata, self.playlist)
         self.handle_size_dependent_buttons()
+        self.playlist_label.setText(os.path.basename(path))
     
     def open_folder(self):
         path = QFileDialog.getExistingDirectory(self, 'Open Directory')
@@ -159,6 +160,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             
             self.current_folderlist = path
             self.sort_mode_combo.setEnabled(True)
+            self.folder_label.setText(os.path.basename(path))
     
     def display_songs(self, metadata, listwidget):
         for song in metadata:
