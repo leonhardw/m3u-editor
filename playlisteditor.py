@@ -169,7 +169,13 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
                 pixmap.loadFromData(song['cover'])
                 del song['cover']
             else:
-                pixmap = QPixmap('disc.png')
+                if getattr(sys, 'frozen', False):
+                    # PyInstaller-compiled version
+                    base_dir = getattr(sys, '_MEIPASS', '.')
+                    pixmap = QPixmap(os.path.join(base_dir, 'disc.png'))
+                else:
+                    # Python
+                    pixmap = QPixmap('disc.png')
             
             scaled_pixmap = pixmap.scaled(
                 self.icon_size, self.icon_size,
