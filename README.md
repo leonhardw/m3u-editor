@@ -3,30 +3,31 @@
 # M3U Playlist Editor
 
 A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` playlists.
+
 | Main Editor View | Batch Rename Dialog |
 | :---: | :---: |
-| <img src="https://github.com/leonhardw/m3u-editor/blob/main/images/editor1.png" width="100%" alt="Main Editor View"> | <img src="https://github.com/leonhardw/m3u-editor/blob/main/images/rename.png" width="100%" alt="Rename Dialog"> |
+| <img src="images/editor1.png" width="100%" alt="Main Editor View"> | <img src="images/rename.png" width="100%" alt="Rename Dialog"> |
 
 ## Features
-- View all songs in a folder
-- Batch rename all songs in a folder based on metadata (see [Batch Renaming](#batch-renaming) section below)
-- Rearrange songs in a playlist (with drag'n'drop support)
-- Add song manually
-- Sort folder list by title or artist (ascending and descending)
-- Compact mode without folder panel
-- Absolute and relative path support (see [Absolute and Relative Paths](#absolute-and-relative-paths) section below)
+- **Folder View:** Display all audio tracks in a selected directory.
+- **Batch Renaming:** Rename files based on embedded metadata tags (see [Batch Renaming](#batch-renaming)).
+- **Playlist Management:** Rearrange tracks via drag-and-drop and add songs manually.
+- **Sorting:** Sort folder contents by title or artist (ascending and descending).
+- **Compact Mode:** Hide the folder panel if you don't need it.
+- **Path Flexibility:** Support for absolute and relative paths (see [Absolute and Relative Paths](#absolute-and-relative-paths)).
 
 ## Limitations
 - Currently, only .flac files are supported (.mp3 support might come in the future)
 - Only plain-text .m3u playlists are supported
 
 ## Batch Renaming
-1. Check the "Show folder list" checkbox and open a folder containing .flac files.
+1. Check "Show folder list" and open a folder containing .flac files.
 2. Click on "Rename"
 3. Enter the new filename pattern with the following placeholders:  
-- `%T` = Title  
-- `%A` = Artist  
-e.g. `%T (%A)` -> `Title (Artist).flac`
+  - `%T` = Title  
+  - `%A` = Artist  
+
+*Example:* `%T (%A)` → `Title (Artist).flac`
 
 **Note:**
 - Metadata is extracted directly from embedded FLAC tags (the original filename is not analyzed).
