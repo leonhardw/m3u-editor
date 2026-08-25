@@ -210,6 +210,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         
         print(new_metadata)
         save_as_m3u(path, new_metadata, rel_paths)
+        self.playlist_label.setText(os.path.basename(path))
         QMessageBox.information(self, 'Success', 'Playlist saved successfully.')
     
     def clear_playlist(self):
