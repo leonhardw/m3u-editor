@@ -2,13 +2,13 @@
 
 # M3U Playlist Editor
 
-A small graphical editor for .m3u playlists
-
-<img width="80%" alt="Filters" src="https://github.com/leonhardw/m3u-editor/blob/main/images/editor1.png" /> 
-<img width="40%" alt="Filters" src="https://github.com/leonhardw/m3u-editor/blob/main/images/rename.png" /> 
+A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` playlists.
+| Main Editor View | Batch Rename Dialog |
+| :---: | :---: |
+| <img src="https://github.com/leonhardw/m3u-editor/blob/main/images/editor1.png" width="100%" alt="Main Editor View"> | <img src="https://github.com/leonhardw/m3u-editor/blob/main/images/rename.png" width="100%" alt="Rename Dialog"> |
 
 ## Features
-- Add songs from a folder
+- View all songs in a folder
 - Batch rename all songs in a folder based on metadata (see [Batch Renaming](#batch-renaming) section below)
 - Rearrange songs in a playlist (with drag'n'drop support)
 - Add song manually
@@ -24,25 +24,45 @@ A small graphical editor for .m3u playlists
 1. Check the "Show folder list" checkbox and open a folder containing .flac files.
 2. Click on "Rename"
 3. Enter the new filename pattern with the following placeholders:  
-`%T` = Title  
-`%A` = Artist  
+- `%T` = Title  
+- `%A` = Artist  
 e.g. `%T (%A)` -> `Title (Artist).flac`
 
-- The title and artist will be extracted from the embedded metadata of the file.
-- The filename itself is not analyzed.
-- Don't add `.flac` to the pattern. Note you don't have to use all placeholders.  
-- If multiple files would have the same name, `(1)`, `(2)` and so on will be added automatically.
-- If a song doesn't have metadata, it won't be renamed.
+**Note:**
+- Metadata is extracted directly from embedded FLAC tags (the original filename is not analyzed).
+- Do **not** include `.flac` in your custom pattern.
+- You do not need to use every placeholder.
+- Duplicate filenames automatically receive incremental suffixes like `(1)`, `(2)`, etc.
+- Tracks without metadata will be skipped.
 
 ## Absolute and Relative Paths
-When saving a playlist, you can decide whether paths should be absolute or relative.  
-- If you select relative paths, the paths will be relative to where the playlist is saved. If you move the playlist to another folder, the songs can't be found anymore. To move a playlist, open it again in the editor and save it to the new folder.  
-- Absolute paths are resistent to moving the .m3u file.
+When saving a playlist, choose between two path formats:
+
+- **Relative Paths:** File paths are relative to the directory where the `.m3u` file is saved. Moving the playlist file independently will break track paths. To relocate a relative playlist, open it in the editor and save it to the new location.
+- **Absolute Paths:** Stores explicit full system paths, keeping the playlist functional regardless of where the `.m3u` file itself is moved.
 
 ## Installation
 Requirements: Python 3.10 or newer
-1. Download or clone the repository
-2. Install requirements.txt
-3. Run `playlisteditor.py`
+1. Clone or download this repository:
+```bash
+git clone https://github.com/leonhardw/m3u-editor.git
+cd m3u-editor
+```
+2. Install dependencies
+```bash
+# Windows
+pip install -r requirements.txt
+
+# Linux and macOS
+pip3 install -r requirements.txt
+```
+3. Run
+```bash
+# Windows
+python playlisteditor.py
+
+# Linux and macOS
+python3 playlisteditor.py
+```
 
 
