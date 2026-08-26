@@ -72,8 +72,8 @@ A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` pl
 ## Absolute and Relative Paths
 When saving a playlist, choose between two path formats:
 
-- **Relative Paths:** File paths are relative to the directory where the `.m3u` file is saved. Moving the playlist file independently will break track paths. To relocate a relative playlist, open it in the editor and save it to the new location.
-- **Absolute Paths:** Stores explicit full system paths, keeping the playlist functional regardless of where the `.m3u` file itself is moved.
+- **Relative Paths:** File paths are relative to the directory where the `.m3u` file is saved. Moving the playlist file independently will break track paths, but if the playlist is moved alongside the tracks, the paths will still work. To relocate a playlist with relative paths, open it in the editor and save it to the new location. 
+- **Absolute Paths:** Stores explicit full system paths, keeping the playlist functional regardless of where the `.m3u` file itself is moved but moving the playlist alongside the tracks will not work.
 
 ## Run From Source
 Requirements: Python 3.10 or newer
