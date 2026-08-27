@@ -54,6 +54,9 @@ A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` pl
 - **From source**: See [Run From Source](#run-from-source) below.
 
 ## Batch Renaming
+> [!WARNING]
+> Renaming will break all paths in playlists. Always create playlists **after** batch renaming.
+
 1. Check "Show folder list" and open a folder containing .flac files.
 2. Click on "Rename"
 3. Enter the new filename pattern with the following placeholders:  
