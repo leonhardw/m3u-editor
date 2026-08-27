@@ -143,10 +143,12 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         self.handle_size_dependent_buttons()
         self.playlist_label.setText(os.path.basename(path))
     
-    def open_folder(self):
-        path = QFileDialog.getExistingDirectory(self, 'Open Directory')
-        if not path:
-            return
+    def open_folder(self, state=None, path=None):
+        if path is None:
+            path = QFileDialog.getExistingDirectory(self, 'Open Directory')
+            if not path:
+                return
+        self.folderlist.clear()
         songs = [i for i in os.listdir(path) if os.path.splitext(i)[1].lower() == '.flac']
         if len(songs) == 0:
             QMessageBox.warning(self, 'Error', 'No FLAC files found.')
@@ -278,6 +280,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         if self.rename_dialog.exec():
             batch_rename(self.current_folderlist, self.rename_dialog.pattern_edit.text(), False)
             QMessageBox.information(self, 'Success', 'All files renamed successfully.')
+            self.open_folder(path=self.current_folderlist)
     
     def change_sort_mode(self, index):
         print(index)
@@ -346,7 +349,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
     
     def closeEvent(self, event):
         if self.playlist_opened:
-            reply = QMessageBox.question(self, 'Unsaved changes', 'Close without saving?',
+            reply = QMessageBox.question(self, 'Confirm', 'Any unsaved changes will be lost. Continue?',
                                          QMessageBox.StandardButton.Yes |
                                          QMessageBox.StandardButton.No,
                                          QMessageBox.StandardButton.No)
