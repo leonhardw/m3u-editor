@@ -19,7 +19,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QHBoxLayout,
     QLabel, QListWidget, QListWidgetItem, QMainWindow,
     QMenu, QMenuBar, QPushButton, QSizePolicy,
-    QSpacerItem, QStatusBar, QVBoxLayout, QWidget)
+    QSpacerItem, QStatusBar, QToolButton, QVBoxLayout,
+    QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -166,7 +167,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_4.addWidget(self.open_playlist_btn)
 
-        self.save_playlist_btn = QPushButton(self.centralwidget)
+        self.save_playlist_btn = QToolButton(self.centralwidget)
         self.save_playlist_btn.setObjectName(u"save_playlist_btn")
         sizePolicy1.setHeightForWidth(self.save_playlist_btn.sizePolicy().hasHeightForWidth())
         self.save_playlist_btn.setSizePolicy(sizePolicy1)

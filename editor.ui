@@ -230,7 +230,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="save_playlist_btn">
+           <widget class="QToolButton" name="save_playlist_btn">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
               <horstretch>0</horstretch>

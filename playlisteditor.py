@@ -17,11 +17,11 @@ import os
 import sys
 
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtGui import QPixmap, QIcon, QAction
 from PySide6.QtWidgets import (QApplication, QAbstractItemView, QMainWindow, QListWidgetItem,
                                QHeaderView, QFileDialog, QMessageBox, QDialog, QHBoxLayout, QLineEdit,
                                QVBoxLayout, QLabel, QDialogButtonBox, QTableWidget, QTableWidgetItem,
-                               QPushButton)
+                               QPushButton, QToolButton, QMenu)
 
 from song_manager import load_m3u, get_song_metadata, save_as_m3u, batch_rename
 from ui_editor import Ui_MainWindow
@@ -38,6 +38,9 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         self.playlist_opened = False
         self.current_folderlist = None
         self.folder_metadata = None
+        
+        self.playlist_path = None
+        self.playlist_rel_paths = False
         
         self.playlist.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
         self.playlist.setDefaultDropAction(Qt.DropAction.MoveAction)
@@ -65,6 +68,15 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         self.remove_from_playlist_btn.clicked.connect(self.remove_from_playlist)
         self.rename_folder_btn.clicked.connect(self.rename)
         self.sort_mode_combo.currentIndexChanged.connect(self.change_sort_mode)
+        
+        self.save_playlist_btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self.save_playlist_btn.setFixedSize(85, 28)
+        
+        self.save_as_menu = QMenu(self)
+        self.action_save_as = QAction('Save As...', self)
+        self.action_save_as.triggered.connect(self.save_playlist_as)
+        self.save_as_menu.addAction(self.action_save_as)
+        self.save_playlist_btn.setMenu(self.save_as_menu)
         
         self.actionExit.triggered.connect(self.close)
         self.actionAbout.triggered.connect(lambda: AboutDialog(self).exec())
@@ -138,7 +150,19 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         if will_delete_playlist:
             self.playlist.clear()
         songs = load_m3u(path)
-        playlist_metadata = get_song_metadata(songs, os.path.dirname(path), cover_as_bytes=True)
+        new_songs = []
+        for song in songs:
+            if not os.path.isfile(os.path.join(os.path.dirname(path), song)):
+                reply = QMessageBox.question(self, 'Error', f'File "{song}" does not exist.\nLoading it will remove it from the playlist when saved. Continue?',
+                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                             QMessageBox.StandardButton.No)
+                if reply == QMessageBox.StandardButton.Yes:
+                    continue  # don't add
+                elif reply == QMessageBox.StandardButton.No:
+                    return
+            new_songs.append(song)
+        
+        playlist_metadata = get_song_metadata(new_songs, os.path.dirname(path), cover_as_bytes=True)
         self.display_songs(playlist_metadata, self.playlist)
         self.handle_size_dependent_buttons()
         self.playlist_label.setText(os.path.basename(path))
@@ -189,7 +213,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             item.setData(Qt.UserRole, song)
             listwidget.addItem(item)
     
-    def save_playlist(self):
+    def save_playlist_as(self):
         if not self.playlist_opened:
             return
         
@@ -211,14 +235,20 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         path = QFileDialog.getSaveFileName(self, 'Save File', filter='M3U Files (*.m3u)')[0]
         if not path:
             return
+        self.playlist_path = path
+        self.playlist_rel_paths = rel_paths
+        self.save_playlist()
+    
+    def save_playlist(self):
+        if self.playlist_path is None:
+            self.save_playlist_as()
+            return
         new_metadata = []
         for i in range(self.playlist.count()):
             song_data = self.playlist.item(i).data(Qt.UserRole)
             new_metadata.append(song_data)
         
-        print(new_metadata)
-        save_as_m3u(path, new_metadata, rel_paths)
-        self.playlist_label.setText(os.path.basename(path))
+        save_as_m3u(self.playlist_path, new_metadata, self.playlist_rel_paths)
         QMessageBox.information(self, 'Success', 'Playlist saved successfully.')
     
     def clear_playlist(self):
