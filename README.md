@@ -10,6 +10,7 @@ A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` pl
 - [Batch Renaming](#batch-renaming)
 - [Absolute and Relative Paths](#absolute-and-relative-paths)
 - [Run from source](#run-from-source)
+- [Thanks](#thanks)
 
 | Main Editor View | Batch Rename Dialog |
 | :---: | :---: |
@@ -101,5 +102,16 @@ python playlisteditor.py
 # Linux and macOS
 python3 playlisteditor.py
 ```
+
+## Thanks
+**Disc icon (disc.png):**  
+  
+<img src="disc.png" width=5%>  
+  
+Image by [Clker-Free-Vector-Images](https://pixabay.com/users/clker-free-vector-images-3736/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=34919) from [Pixabay](https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=34919)
+
+https://pixabay.com/vectors/dvd-music-disk-compact-disc-cd-34919/
+
+
 
 
