@@ -1,3 +1,5 @@
+#!python3.14
+
 #  Copyright (C) 2026  leonhardw
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -124,31 +126,32 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
                 sub_layout = item.layout()
                 self.set_layout_visibility(sub_layout, state)
     
-    def open_playlist(self):
-        will_delete_playlist = False
-        
-        if self.playlist_opened:
-            message_box = QMessageBox(self)
-            message_box.setWindowTitle('Playlist already opened')
-            message_box.setText('A playlist is already opened. Delete current playlist or append to existing?')
-            btn_append = message_box.addButton("Append", QMessageBox.ButtonRole.AcceptRole)
-            btn_delete = message_box.addButton("Delete", QMessageBox.ButtonRole.ActionRole)
-            message_box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+    def open_playlist(self, path=None):
+        if path is None:
+            will_delete_playlist = False
             
-            message_box.exec()
+            if self.playlist_opened:
+                message_box = QMessageBox(self)
+                message_box.setWindowTitle('Playlist already opened')
+                message_box.setText('A playlist is already opened. Delete current playlist or append to existing?')
+                btn_append = message_box.addButton("Append", QMessageBox.ButtonRole.AcceptRole)
+                btn_delete = message_box.addButton("Delete", QMessageBox.ButtonRole.ActionRole)
+                message_box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+                
+                message_box.exec()
+                
+                if message_box.clickedButton() == btn_append:
+                    pass
+                elif message_box.clickedButton() == btn_delete:
+                    will_delete_playlist = True
+                else:
+                    return
             
-            if message_box.clickedButton() == btn_append:
-                pass
-            elif message_box.clickedButton() == btn_delete:
-                will_delete_playlist = True
-            else:
+            path = QFileDialog.getOpenFileName(self, 'Open File', filter='M3U Files (*.m3u)')[0]
+            if not path:
                 return
-        
-        path = QFileDialog.getOpenFileName(self, 'Open File', filter='M3U Files (*.m3u)')[0]
-        if not path:
-            return
-        if will_delete_playlist:
-            self.playlist.clear()
+            if will_delete_playlist:
+                self.playlist.clear()
         songs = load_m3u(path)
         new_songs = []
         for song in songs:
@@ -306,9 +309,9 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             self.playlist.setCurrentRow(current_row + 1)
     
     def rename(self):
-        self.rename_dialog = RenameDialog(self, self.current_folderlist)
-        if self.rename_dialog.exec():
-            batch_rename(self.current_folderlist, self.rename_dialog.pattern_edit.text(), False)
+        rename_dialog = RenameDialog(self, self.current_folderlist)
+        if rename_dialog.exec():
+            batch_rename(self.current_folderlist, rename_dialog.pattern_edit.text(), False)
             QMessageBox.information(self, 'Success', 'All files renamed successfully.')
             self.open_folder(path=self.current_folderlist)
     
@@ -508,8 +511,11 @@ along with this program.  If not, see <a href="https://www.gnu.org/licenses/">&l
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
+    app = QApplication()
     window = PlaylistEditor()
+    if len(sys.argv) > 1:
+        playlist = sys.argv[1]
+        window.open_playlist(path=playlist)
     window.show()
     # r = RenameDialog()
     # r.update_tableview([('ABC', 'DEF'), ('GHI', 'JKL')])
