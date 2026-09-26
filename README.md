@@ -25,7 +25,7 @@ A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` pl
 - **Path Flexibility:** Support for absolute and relative paths (see [Absolute and Relative Paths](#absolute-and-relative-paths)).
 
 ## Limitations
-- Currently, only .flac files are supported (.mp3 support might come in the future)
+- Only .flac and .mp3 files are supported
 - Only plain-text .m3u playlists are supported
 
 ## Quick Start
@@ -58,7 +58,7 @@ A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` pl
 > [!WARNING]
 > Renaming will break all paths in playlists. Always create playlists **after** batch renaming.
 
-1. Check "Show folder list" and open a folder containing .flac files.
+1. Check "Show folder list" and open a folder containing at least one .flac or .mp3 file.
 2. Click on "Rename"
 3. Enter the new filename pattern with the following placeholders:  
   - `%T` = Title  
@@ -67,11 +67,10 @@ A lightweight graphical tool for managing, sorting, and batch-renaming `.m3u` pl
 *Example:* `%T (%A)` → `Title (Artist).flac`
 
 **Note:**
-- Metadata is extracted directly from embedded FLAC tags (the original filename is not analyzed).
-- Do **not** include `.flac` in your custom pattern.
+- Metadata is extracted directly from embedded FLAC and MP3 (ID3) tags (the original filename is not analyzed unless no metadata is found).
+- Do **not** include `.flac` or `.mp3` in your custom pattern.
 - You do not need to use every placeholder.
 - Duplicate filenames automatically receive incremental suffixes like `(1)`, `(2)`, etc.
-- Tracks without metadata will be skipped.
 
 ## Absolute and Relative Paths
 When saving a playlist, choose between two path formats:
@@ -80,7 +79,7 @@ When saving a playlist, choose between two path formats:
 - **Absolute Paths:** Stores explicit full system paths, keeping the playlist functional regardless of where the `.m3u` file itself is moved but moving the playlist alongside the tracks will not work.
 
 ## Run From Source
-Requirements: Python 3.10 or newer
+Requirements: Python 3.10 or newer (tested with Python 3.14)
 1. Clone or download this repository:
 ```bash
 git clone https://github.com/leonhardw/m3u-editor.git
