@@ -13,17 +13,17 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import io
 import os
 import re
 from typing import Sequence
 
 import unicodedata
 from PIL import Image
-from mutagen.flac import FLAC
 from pathvalidate import sanitize_filename
 
-song_pattern = re.compile(r'^(?:\d\d )?(.+) - (.+).flac$')
+from metadata_helper import Metadata
+
+song_pattern = re.compile(r'^(?:\d\d )?(.+) - (.+).(flac|mp3)$')
 
 placeholder_replacements = {'%T': '{title}', '%A': '{artist}'}
 
@@ -58,36 +58,31 @@ def load_m3u(filename) -> list:
 
 
 def get_song_metadata(songs: Sequence[str], basedir=None, cover_as_bytes=False, cover_size=None) -> list[dict]:
-    metadata = []
+    metadata_list = []
     if basedir is None:
         basedir = os.getcwd()
     
     for song in songs:
         path = os.path.abspath(os.path.join(basedir, song))
-        audio = FLAC(path)
-        title = audio.get('title')[0]
-        artists = audio.get('artist')
+        metadata = Metadata(path)
+        title = metadata.title
+        artists = metadata.artists
+        cover = metadata.cover
         
-        if not title or not artists:
-            artists, title = song_pattern.search(os.path.split(path)[1]).groups()
-            artists = [artists]
-        
-        if audio.pictures:
-            cover_data = audio.pictures[0].data
-            
+        if cover:
             if cover_as_bytes:
-                img = cover_data
+                img = cover
             else:
-                img = Image.open(io.BytesIO(cover_data))
+                img = metadata.cover_pil
                 if cover_size is not None:
                     img.thumbnail((cover_size, cover_size), Image.Resampling.LANCZOS)
         else:
             img = None
         
         song_data = {'text': f'{title}\n{', '.join(artists)}', 'title': title, 'artists': ', '.join(artists), 'cover': img, 'path': path}
-        metadata.append(song_data)
+        metadata_list.append(song_data)
     
-    return metadata
+    return metadata_list
 
 
 def save_as_m3u(filename, data, rel_paths=True):
@@ -121,14 +116,15 @@ def batch_rename(folder, pattern, preview_only=False):
     # print(folder, pattern)
     
     for filename in os.listdir(folder):
-        if os.path.splitext(filename)[1] != '.flac':
+        ext = os.path.splitext(filename)[1]
+        if ext not in ('.flac', '.mp3'):
             continue
         
         incomplete_data = False
         
-        audio = FLAC(os.path.join(folder, filename))
-        title = audio.get('title')[0]
-        artists = ', '.join(audio.get('artist'))
+        metadata = Metadata(os.path.join(folder, filename), include_cover=False)
+        title = metadata.title
+        artists = ', '.join(metadata.artists)
         if not title or not artists:
             incomplete_data = True
         
@@ -147,9 +143,9 @@ def batch_rename(folder, pattern, preview_only=False):
                     else:
                         already_exists = False
                         new_filename = possible_name
-                
+            
             new_names.add(new_filename)
-            rename_operations.append((filename, f'{new_filename}.flac'))
+            rename_operations.append((filename, f'{new_filename}{ext}'))
     
     if preview_only:
         return rename_operations
@@ -160,9 +156,3 @@ def batch_rename(folder, pattern, preview_only=False):
             new_path = os.path.join(folder, new)
             os.rename(old_path, new_path)
         return None
-
-
-if __name__ == '__main__':
-    print(to_ascii('ÄÖÜäöüßẞ, –é— âêîôû²³'))
-    get_song_metadata([r"C:\Leonhard\Musik\FLAC\Racing\14 The Blah Blah Blahs - Do It Better.flac"], basedir=r"C:\Leonhard\Musik\FLAC\Racing")
-    print(batch_rename(r"C:\Leonhard\Musik\FLAC\LW 2", '{a}{{b}}%T%%%A', True))

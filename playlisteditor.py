@@ -42,7 +42,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         self.folder_metadata = None
         
         self.playlist_path = None
-        self.playlist_rel_paths = False
+        self.playlist_rel_paths = None
         
         self.playlist.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
         self.playlist.setDefaultDropAction(Qt.DropAction.MoveAction)
@@ -126,7 +126,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
                 sub_layout = item.layout()
                 self.set_layout_visibility(sub_layout, state)
     
-    def open_playlist(self, path=None):
+    def open_playlist(self, _toggled=None, path=None):
         if path is None:
             will_delete_playlist = False
             
@@ -134,9 +134,9 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
                 message_box = QMessageBox(self)
                 message_box.setWindowTitle('Playlist already opened')
                 message_box.setText('A playlist is already opened. Delete current playlist or append to existing?')
-                btn_append = message_box.addButton("Append", QMessageBox.ButtonRole.AcceptRole)
-                btn_delete = message_box.addButton("Delete", QMessageBox.ButtonRole.ActionRole)
-                message_box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+                btn_append = message_box.addButton('Append', QMessageBox.ButtonRole.AcceptRole)
+                btn_delete = message_box.addButton('Delete', QMessageBox.ButtonRole.ActionRole)
+                message_box.addButton('Cancel', QMessageBox.ButtonRole.RejectRole)
                 
                 message_box.exec()
                 
@@ -152,6 +152,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
                 return
             if will_delete_playlist:
                 self.playlist.clear()
+        print(path)
         songs = load_m3u(path)
         new_songs = []
         for song in songs:
@@ -169,6 +170,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         self.display_songs(playlist_metadata, self.playlist)
         self.handle_size_dependent_buttons()
         self.playlist_label.setText(os.path.basename(path))
+        self.playlist_path = path
     
     def open_folder(self, state=None, path=None):
         if path is None:
@@ -176,9 +178,9 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             if not path:
                 return
         self.folderlist.clear()
-        songs = [i for i in os.listdir(path) if os.path.splitext(i)[1].lower() == '.flac']
+        songs = [i for i in os.listdir(path) if os.path.splitext(i)[1].lower() in ('.flac', '.mp3')]
         if len(songs) == 0:
-            QMessageBox.warning(self, 'Error', 'No FLAC files found.')
+            QMessageBox.warning(self, 'Error', 'No FLAC or MP3 files found.')
             return
         self.folder_metadata = get_song_metadata(songs, path, cover_as_bytes=True)
         self.folder_metadata.sort(key=lambda x: x['title'].lower())
@@ -216,24 +218,29 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             item.setData(Qt.UserRole, song)
             listwidget.addItem(item)
     
+    # noinspection inconsistent-returns
+    def show_path_mode_dialog(self):
+        message_box = QMessageBox(self)
+        message_box.setWindowTitle('Path handling')
+        message_box.setText('How should paths be saved?')
+        btn_abs = message_box.addButton('Absolute', QMessageBox.ButtonRole.AcceptRole)
+        btn_rel = message_box.addButton('Relative', QMessageBox.ButtonRole.ActionRole)
+        btn_cancel = message_box.addButton('Cancel', QMessageBox.ButtonRole.RejectRole)
+        
+        message_box.exec()
+        if message_box.clickedButton() == btn_abs:
+            return False
+        elif message_box.clickedButton() == btn_rel:
+            return True
+        elif message_box.clickedButton() == btn_cancel:
+            return None
+    
     def save_playlist_as(self):
         if not self.playlist_opened:
             return
         
-        message_box = QMessageBox(self)
-        message_box.setWindowTitle('Path handling')
-        message_box.setText('How should paths be saved?')
-        btn_abs = message_box.addButton("Absolute", QMessageBox.ButtonRole.AcceptRole)
-        btn_rel = message_box.addButton("Relative", QMessageBox.ButtonRole.ActionRole)
-        message_box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
-        
-        message_box.exec()
-        
-        if message_box.clickedButton() == btn_abs:
-            rel_paths = False
-        elif message_box.clickedButton() == btn_rel:
-            rel_paths = True
-        else:
+        rel_paths = self.show_path_mode_dialog()
+        if rel_paths is None:
             return
         path = QFileDialog.getSaveFileName(self, 'Save File', filter='M3U Files (*.m3u)')[0]
         if not path:
@@ -245,7 +252,13 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
     def save_playlist(self):
         if self.playlist_path is None:
             self.save_playlist_as()
-            return
+            return False
+        if self.playlist_rel_paths is None:
+            rel_paths = self.show_path_mode_dialog()
+            if rel_paths is None:
+                return False
+            else:
+                self.playlist_rel_paths = rel_paths
         new_metadata = []
         for i in range(self.playlist.count()):
             song_data = self.playlist.item(i).data(Qt.UserRole)
@@ -253,6 +266,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         
         save_as_m3u(self.playlist_path, new_metadata, self.playlist_rel_paths)
         QMessageBox.information(self, 'Success', 'Playlist saved successfully.')
+        return True
     
     def clear_playlist(self):
         reply = QMessageBox.question(self, 'Clear playlist', 'Are you sure you want to clear the playlist?',
@@ -274,7 +288,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             self.playlist.setCurrentRow(self.playlist.count() - 1)
     
     def add_file_to_playlist(self):
-        path = QFileDialog.getOpenFileName(self, 'Open File', filter='FLAC files (*.flac)')[0]
+        path = QFileDialog.getOpenFileName(self, 'Open File', filter='Music files (*.flac *.mp3)')[0]
         if not path:
             return
         songs = [path]
@@ -309,7 +323,11 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             self.playlist.setCurrentRow(current_row + 1)
     
     def rename(self):
-        rename_dialog = RenameDialog(self, self.current_folderlist)
+        live_preview = True
+        for file in os.listdir(self.current_folderlist):
+            if os.path.splitext(file)[1] == '.mp3':
+                live_preview = False
+        rename_dialog = RenameDialog(self, self.current_folderlist, live_preview=live_preview)
         if rename_dialog.exec():
             batch_rename(self.current_folderlist, rename_dialog.pattern_edit.text(), False)
             QMessageBox.information(self, 'Success', 'All files renamed successfully.')
@@ -382,19 +400,26 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
     
     def closeEvent(self, event):
         if self.playlist_opened:
-            reply = QMessageBox.question(self, 'Confirm', 'Any unsaved changes will be lost. Continue?',
+            reply = QMessageBox.question(self, 'Playlist Editor', 'Save before closing?',
                                          QMessageBox.StandardButton.Yes |
-                                         QMessageBox.StandardButton.No,
-                                         QMessageBox.StandardButton.No)
+                                         QMessageBox.StandardButton.No |
+                                         QMessageBox.StandardButton.Cancel,
+                                         QMessageBox.StandardButton.Cancel)
             
             if reply == QMessageBox.StandardButton.Yes:
-                event.accept()
+                result = self.save_playlist()
+                if result:
+                    event.accept()
+                else:
+                    event.ignore()
             elif reply == QMessageBox.StandardButton.No:
+                event.accept()
+            elif reply == QMessageBox.StandardButton.Cancel:
                 event.ignore()
 
 
 class RenameDialog(QDialog):
-    def __init__(self, parent=None, folder=None):
+    def __init__(self, parent=None, folder=None, live_preview=False):
         super().__init__(parent)
         
         self.folder = folder
@@ -409,33 +434,43 @@ class RenameDialog(QDialog):
         self.resize(600, 600)
         
         self.pattern_hbox = QHBoxLayout()
+        
         self.pattern_hbox.addWidget(QLabel('Pattern:'))
         self.pattern_edit = QLineEdit(self)
         self.pattern_edit.setPlaceholderText('%T = Title, %A = Artists')
         self.pattern_hbox.addWidget(self.pattern_edit)
         
+        if not live_preview:
+            self.preview_button = QPushButton('Preview')
+            self.preview_button.clicked.connect(self.update_preview)
+            
+            self.pattern_hbox.addWidget(self.preview_button)
+        
         self.table_widget = QTableWidget(self)
         self.table_widget.setColumnCount(2)
         
-        self.table_widget.setHorizontalHeaderLabels(["Old filename", "New filename"])
+        self.table_widget.setHorizontalHeaderLabels(['Old filename', 'New filename'])
         self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table_widget.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         
         self.table_widget.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.table_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.table_widget.setStyleSheet(
-            """
+            '''
             QTableWidget::item:hover {
                 background-color: transparent;
             }
-        """
+        '''
         )
         
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         
-        self.pattern_edit.textChanged.connect(self.update_preview)
+        if live_preview:
+            self.pattern_edit.textChanged.connect(self.update_preview)
+        else:
+            self.pattern_edit.textChanged.connect(lambda: self.preview_button.setEnabled(True))
         
         self.vbox = QVBoxLayout()
         self.vbox.addLayout(self.pattern_hbox)
@@ -444,6 +479,7 @@ class RenameDialog(QDialog):
         self.setLayout(self.vbox)
     
     def update_preview(self):
+        self.preview_button.setEnabled(False)
         data = batch_rename(self.folder, self.pattern_edit.text(), True)
         self.update_tableview(data)
     
@@ -517,7 +553,4 @@ if __name__ == '__main__':
         playlist = sys.argv[1]
         window.open_playlist(path=playlist)
     window.show()
-    # r = RenameDialog()
-    # r.update_tableview([('ABC', 'DEF'), ('GHI', 'JKL')])
-    # r.exec()
     sys.exit(app.exec())
