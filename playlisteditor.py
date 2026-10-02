@@ -541,7 +541,7 @@ class RenameDialog(QDialog):
 class AboutDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('About YouTube History Visualizer')
+        self.setWindowTitle('About Playlist Editor')
         
         self.vbox = QVBoxLayout()
         self.license_text = '''Copyright (C) 2026  leonhardw
