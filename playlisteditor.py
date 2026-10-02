@@ -597,8 +597,8 @@ along with this program.  If not, see <a href="https://www.gnu.org/licenses/">&l
 if __name__ == '__main__':
     app = QApplication()
     window = PlaylistEditor()
+    window.show()
     if len(sys.argv) > 1:
         playlist = sys.argv[1]
         window.open_playlist(path=playlist)
-    window.show()
     sys.exit(app.exec())
