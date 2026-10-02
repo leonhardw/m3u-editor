@@ -20,15 +20,16 @@ from PIL import Image
 from mutagen.flac import FLAC
 from mutagen.id3 import ID3, Frames
 
-song_pattern = re.compile(r'^(?:\d\d )?(.+) - (.+).flac$')
+song_pattern = re.compile(r'^(?:\d\d )?(.+) - (.+).(flac|mp3)$', re.IGNORECASE)
 
 
 class Metadata:
-    def __init__(self, filename, include_cover=True):
+    def __init__(self, filename, include_cover=True, only_cover=False):
         self.filename = filename
         self.filetype = os.path.splitext(filename)[1]
         
         self.include_cover = include_cover
+        self.only_cover = only_cover
         
         self.title = ''
         self.artists = ''
@@ -37,21 +38,23 @@ class Metadata:
         match self.filetype:
             case '.flac':
                 audio = FLAC(filename)
-                self.title = audio.get('title', '')[0]
-                self.artists = audio.get('artist', [])
+                if not self.only_cover:
+                    self.title = audio.get('title', '')[0]
+                    self.artists = audio.get('artist', [])
                 if self.include_cover:
                     if audio.pictures:
                         self.cover = audio.pictures[0].data
             
             case '.mp3':
-                requested_ids = {'TIT2', 'TPE1'}
+                if self.only_cover:
+                    requested_ids = {}
+                else:
+                    requested_ids = {'TIT2', 'TPE1'}
                 if self.include_cover:
                     requested_ids.add('APIC')
                 
-                # Nur die Klassen für die benötigten Frames herausfiltern
                 selected_frames = {k: v for k, v in Frames.items() if k in requested_ids}
                 
-                # ID3 anweisen, ausschließlich diese Frames zu dekodieren
                 audio = ID3(filename, known_frames=selected_frames)
                 
                 tit2 = audio.get('TIT2')

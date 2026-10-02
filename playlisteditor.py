@@ -18,15 +18,68 @@
 import os
 import sys
 
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QPixmap, QIcon, QAction
+from PySide6.QtCore import Qt, QSize, QObject, Signal, QRunnable, QThreadPool
+from PySide6.QtGui import QPixmap, QIcon, QAction, QImage
 from PySide6.QtWidgets import (QApplication, QAbstractItemView, QMainWindow, QListWidgetItem,
                                QHeaderView, QFileDialog, QMessageBox, QDialog, QHBoxLayout, QLineEdit,
                                QVBoxLayout, QLabel, QDialogButtonBox, QTableWidget, QTableWidgetItem,
                                QPushButton, QToolButton, QMenu)
 
-from song_manager import load_m3u, get_song_metadata, save_as_m3u, batch_rename
+from song_manager import load_m3u, get_song_metadata, save_as_m3u, batch_rename, folder_to_data
 from ui_editor import Ui_MainWindow
+
+
+DEFAULT_DISC_IMAGE = None  # QImage(disc.png)
+
+
+def get_default_disc_image() -> QImage:
+    global DEFAULT_DISC_IMAGE
+    if DEFAULT_DISC_IMAGE is None:
+        if getattr(sys, 'frozen', False):
+            base_dir = getattr(sys, '_MEIPASS', '.')
+            path = os.path.join(base_dir, 'disc.png')
+        else:
+            path = 'disc.png'
+        DEFAULT_DISC_IMAGE = QImage(path)
+    return DEFAULT_DISC_IMAGE
+
+
+def create_placeholder_icon(size: int) -> QIcon:
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    return QIcon(pixmap)
+
+
+class ImageWorkerSignals(QObject):
+    finished = Signal(QListWidgetItem, QImage)
+
+
+class CoverLoaderWorker(QRunnable):
+    def __init__(self, item: QListWidgetItem, cover_data: bytes, target_size: int):
+        super().__init__()
+        self.item = item
+        self.cover_data = cover_data
+        self.target_size = target_size
+        self.signals = ImageWorkerSignals()
+    
+    def run(self):
+        if self.cover_data:
+            image = QImage()
+            image.loadFromData(self.cover_data)
+        else:
+            image = get_default_disc_image()
+        
+        if not image.isNull():
+            scaled_image = image.scaled(
+                self.target_size,
+                self.target_size,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+        else:
+            scaled_image = QImage()
+        
+        self.signals.finished.emit(self.item, scaled_image)
 
 
 class PlaylistEditor(QMainWindow, Ui_MainWindow):
@@ -161,15 +214,15 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
                                              QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                              QMessageBox.StandardButton.No)
                 if reply == QMessageBox.StandardButton.Yes:
-                    continue  # don't add
+                    continue  # don't add song
                 elif reply == QMessageBox.StandardButton.No:
                     return
             new_songs.append(song)
         
         playlist_metadata = get_song_metadata(new_songs, os.path.dirname(path), cover_as_bytes=True)
+        self.playlist_label.setText(os.path.basename(path))
         self.display_songs(playlist_metadata, self.playlist)
         self.handle_size_dependent_buttons()
-        self.playlist_label.setText(os.path.basename(path))
         self.playlist_path = path
     
     def open_folder(self, state=None, path=None):
@@ -194,29 +247,35 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             self.folder_label.setText(os.path.basename(path))
     
     def display_songs(self, metadata, listwidget):
+        items = []
         for song in metadata:
-            if song['cover']:
-                pixmap = QPixmap()
-                pixmap.loadFromData(song['cover'])
-                del song['cover']
-            else:
-                if getattr(sys, 'frozen', False):
-                    # PyInstaller-compiled version
-                    base_dir = getattr(sys, '_MEIPASS', '.')
-                    pixmap = QPixmap(os.path.join(base_dir, 'disc.png'))
-                else:
-                    # Python
-                    pixmap = QPixmap('disc.png')
-            
-            scaled_pixmap = pixmap.scaled(
-                self.icon_size, self.icon_size,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            )
-            icon = QIcon(scaled_pixmap)
-            item = QListWidgetItem(icon, song['text'])
+            item = QListWidgetItem(create_placeholder_icon(self.icon_size), song['text'])
             item.setData(Qt.UserRole, song)
             listwidget.addItem(item)
+            items.append((song, item))
+            
+        listwidget.setCurrentRow(0)
+        
+        self.load_covers(items)
+            
+    def load_covers(self, items):
+        thread_pool = QThreadPool.globalInstance()
+        thread_pool.setMaxThreadCount(4)
+        
+        for song, item in items:
+            cover_data = song['cover']
+            del song['cover']
+        
+            worker = CoverLoaderWorker(item, cover_data, self.icon_size)
+            worker.signals.finished.connect(self._on_cover_loaded)
+            thread_pool.start(worker)
+            QApplication.processEvents()
+    
+    # noinspection method-may-be-static
+    def _on_cover_loaded(self, item: QListWidgetItem, scaled_image: QImage):
+        if not scaled_image.isNull():
+            pixmap = QPixmap.fromImage(scaled_image)
+            item.setIcon(QIcon(pixmap))
     
     # noinspection inconsistent-returns
     def show_path_mode_dialog(self):
@@ -323,11 +382,7 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
             self.playlist.setCurrentRow(current_row + 1)
     
     def rename(self):
-        live_preview = True
-        for file in os.listdir(self.current_folderlist):
-            if os.path.splitext(file)[1] == '.mp3':
-                live_preview = False
-        rename_dialog = RenameDialog(self, self.current_folderlist, live_preview=live_preview)
+        rename_dialog = RenameDialog(self, self.current_folderlist)
         if rename_dialog.exec():
             batch_rename(self.current_folderlist, rename_dialog.pattern_edit.text(), False)
             QMessageBox.information(self, 'Success', 'All files renamed successfully.')
@@ -386,6 +441,8 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
         elif event.key() == Qt.Key_Delete:
             self.remove_from_playlist()
         
+        # not working right now
+        # TODO: add support for arrow keys
         # elif shift and event.key() == Qt.Key_Up:
         #     self.move_up()
         # elif shift and event.key() == Qt.Key_Down:
@@ -419,10 +476,11 @@ class PlaylistEditor(QMainWindow, Ui_MainWindow):
 
 
 class RenameDialog(QDialog):
-    def __init__(self, parent=None, folder=None, live_preview=False):
+    def __init__(self, parent=None, folder=None):
         super().__init__(parent)
         
         self.folder = folder
+        self.data = folder_to_data(folder)
         
         self.setWindowTitle('Rename files')
         self.setWindowFlags(
@@ -439,12 +497,6 @@ class RenameDialog(QDialog):
         self.pattern_edit = QLineEdit(self)
         self.pattern_edit.setPlaceholderText('%T = Title, %A = Artists')
         self.pattern_hbox.addWidget(self.pattern_edit)
-        
-        if not live_preview:
-            self.preview_button = QPushButton('Preview')
-            self.preview_button.clicked.connect(self.update_preview)
-            
-            self.pattern_hbox.addWidget(self.preview_button)
         
         self.table_widget = QTableWidget(self)
         self.table_widget.setColumnCount(2)
@@ -467,10 +519,7 @@ class RenameDialog(QDialog):
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         
-        if live_preview:
-            self.pattern_edit.textChanged.connect(self.update_preview)
-        else:
-            self.pattern_edit.textChanged.connect(lambda: self.preview_button.setEnabled(True))
+        self.pattern_edit.textChanged.connect(self.update_preview)
         
         self.vbox = QVBoxLayout()
         self.vbox.addLayout(self.pattern_hbox)
@@ -479,8 +528,7 @@ class RenameDialog(QDialog):
         self.setLayout(self.vbox)
     
     def update_preview(self):
-        self.preview_button.setEnabled(False)
-        data = batch_rename(self.folder, self.pattern_edit.text(), True)
+        data = batch_rename(self.folder, self.data, self.pattern_edit.text(), True)
         self.update_tableview(data)
     
     def update_tableview(self, data: list[tuple[str, str]]):

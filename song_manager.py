@@ -103,7 +103,7 @@ def convert_data_to_m3u(data: list[dict], folder=None, rel_paths=True):
     return m3u_list
 
 
-def batch_rename(folder, pattern, preview_only=False):
+def batch_rename(folder, data=None, pattern='', preview_only=False):
     for old, new in (('%%', '\x00'), ('{', '{{'), ('}', '}}')):
         pattern = pattern.replace(old, new)
     for old, new in placeholder_replacements.items():
@@ -113,7 +113,6 @@ def batch_rename(folder, pattern, preview_only=False):
     old_names = set(os.path.splitext(i)[0] for i in os.listdir(folder))
     new_names = set()
     rename_operations: list[tuple[str, str]] = []
-    # print(folder, pattern)
     
     for filename in os.listdir(folder):
         ext = os.path.splitext(filename)[1]
@@ -122,16 +121,19 @@ def batch_rename(folder, pattern, preview_only=False):
         
         incomplete_data = False
         
-        metadata = Metadata(os.path.join(folder, filename), include_cover=False)
-        title = metadata.title
-        artists = ', '.join(metadata.artists)
+        if data is None:
+            metadata = Metadata(os.path.join(folder, filename), include_cover=False)
+            title = metadata.title
+            artists = ', '.join(metadata.artists)
+        else:
+            title = data[filename]['title']
+            artists = data[filename]['artists']
         if not title or not artists:
             incomplete_data = True
         
         if not incomplete_data:
             new_filename = pattern.format(title=title, artist=artists)
             new_filename = sanitize_filename(to_ascii(new_filename))
-            # print(filename)
             if new_filename in new_names or (new_filename != os.path.splitext(filename)[0] and new_filename in old_names):
                 already_exists = True
                 duplicate_number = 1
@@ -156,3 +158,18 @@ def batch_rename(folder, pattern, preview_only=False):
             new_path = os.path.join(folder, new)
             os.rename(old_path, new_path)
         return None
+
+
+def folder_to_data(folder):
+    data = {}
+    for filename in os.listdir(folder):
+        ext = os.path.splitext(filename)[1]
+        if ext not in ('.flac', '.mp3'):
+            continue
+        
+        metadata = Metadata(os.path.join(folder, filename), include_cover=False)
+        title = metadata.title
+        artists = ', '.join(metadata.artists)
+        data[filename] = {'title': title, 'artists': artists}
+    
+    return data
